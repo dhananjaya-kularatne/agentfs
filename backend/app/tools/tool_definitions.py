@@ -71,4 +71,48 @@ TOOL_DEFINITIONS = [
             }
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "write_file",
+            "description": "Create a new file or overwrite an existing file with the given text content. This is a destructive action and requires human confirmation before it takes effect.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Relative path where the file should be written."},
+                    "content": {"type": "string", "description": "The text content to write into the file."}
+                },
+                "required": ["path", "content"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "move_file",
+            "description": "Move or rename a file. Fails if the destination already exists. This is a destructive action and requires human confirmation before it takes effect.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "src": {"type": "string", "description": "Relative path to the file to move."},
+                    "dest": {"type": "string", "description": "Relative destination path."}
+                },
+                "required": ["src", "dest"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_file",
+            "description": "Permanently delete a file. Cannot delete directories. This is a destructive action and requires human confirmation before it takes effect.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Relative path to the file to delete."}
+                },
+                "required": ["path"]
+            }
+        }
+    },
 ]

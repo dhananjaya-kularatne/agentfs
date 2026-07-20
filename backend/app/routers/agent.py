@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.models.agent import AgentTaskRequest, AgentTaskResponse, ConfirmActionRequest
 from app.services.agent_service import resume_agent_task, run_agent_task
+from app.services.mongo_service import get_session, list_sessions
 
 router = APIRouter()
 
@@ -19,3 +20,18 @@ async def confirm_agent_action(session_id: str, request: ConfirmActionRequest):
     if result.get("status") == "failed" and result.get("error") in ("Session not found.", "Session is not awaiting confirmation."):
         raise HTTPException(status_code=404, detail=result["error"])
     return AgentTaskResponse(**result)
+
+@router.get("/api/agent/sessions")
+async def get_sessions(limit: int = 50):
+    """List recent agent sessions."""
+    sessions = await list_sessions(limit)
+    return {"sessions": sessions}
+
+
+@router.get("/api/agent/sessions/{session_id}")
+async def get_session_detail(session_id: str):
+    """Fetch full detail for one session, including steps and message history."""
+    session = await get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    return session

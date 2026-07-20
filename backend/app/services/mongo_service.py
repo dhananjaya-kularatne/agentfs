@@ -37,3 +37,11 @@ async def get_session(session_id: str) -> dict | None:
 async def update_session(session_id: str, updates: dict) -> None:
     """Update fields on an existing session."""
     await sessions_collection.update_one({"_id": session_id}, {"$set": updates})
+
+async def list_sessions(limit: int = 50) -> list[dict]:
+    """Return recent sessions, most recent first, with lightweight fields only."""
+    cursor = sessions_collection.find(
+        {},
+        {"goal": 1, "status": 1, "created_at": 1, "completed_at": 1, "total_steps": 1, "total_tool_calls": 1}
+    ).sort("created_at", -1).limit(limit)
+    return await cursor.to_list(length=limit)

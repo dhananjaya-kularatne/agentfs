@@ -13,6 +13,10 @@ def validate_path(relative_path: str) -> Path:
     and ensure it does not escape the sandbox (blocks ../ traversal and symlink escapes).
     Returns the resolved, safe absolute Path.
     """
+
+    if "\x00" in relative_path:
+        raise PathValidationError("Path contains a null byte, which is not allowed.")
+    
     working_dir = Path(settings.agent_working_directory).resolve()    # C:\agentfs\backend\sandbox
     candidate = (working_dir / relative_path).resolve()
 

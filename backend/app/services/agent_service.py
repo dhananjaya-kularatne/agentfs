@@ -71,12 +71,24 @@ async def resume_agent_task(session_id: str, approved: bool) -> dict:
 async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: set) -> dict:
     """Shared loop logic used by both starting and resuming a session."""
     for iteration in range(MAX_ITERATIONS):
-        response = _client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=messages,
-            tools=TOOL_DEFINITIONS,
-            tool_choice="auto",
-        )
+        try:
+            response = _client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                tools=TOOL_DEFINITIONS,
+                tool_choice="auto",
+            )
+        except Exception as e:
+            steps.append({"type": "llm_error", "message": str(e)})
+            await update_session(session_id, {
+                "status": "failed",
+                "error": f"LLM generation failed: {str(e)}",
+                "steps": steps,
+                "total_steps": len(steps),
+                "total_tool_calls": len([s for s in steps if s["type"] in ("tool_call", "confirmation_result")]),
+            })
+            return {"status": "failed", "final_answer": None, "pending_action": None, "steps": steps, "error": f"LLM generation failed: {str(e)}", "session_id": session_id}
+
         message = response.choices[0].message
 
         if not message.tool_calls:

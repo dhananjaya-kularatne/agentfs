@@ -45,3 +45,8 @@ async def list_sessions(limit: int = 50) -> list[dict]:
         {"goal": 1, "status": 1, "created_at": 1, "completed_at": 1, "total_steps": 1, "total_tool_calls": 1}
     ).sort("created_at", -1).limit(limit)
     return await cursor.to_list(length=limit)
+
+async def delete_session(session_id: str) -> bool:
+    """Delete a session record. Returns True if a document was actually deleted."""
+    result = await sessions_collection.delete_one({"_id": session_id})
+    return result.deleted_count > 0

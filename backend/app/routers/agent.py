@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.models.agent import AgentTaskRequest, AgentTaskResponse, ConfirmActionRequest
 from app.services.agent_service import resume_agent_task, run_agent_task
-from app.services.mongo_service import get_session, list_sessions
+from app.services.mongo_service import delete_session, get_session, list_sessions
 
 router = APIRouter()
 
@@ -35,3 +35,11 @@ async def get_session_detail(session_id: str):
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     return session
+
+@router.delete("/api/agent/sessions/{session_id}")
+async def remove_session(session_id: str):
+    """Delete a session."""
+    deleted = await delete_session(session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    return {"deleted": True}

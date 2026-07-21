@@ -115,4 +115,18 @@ TOOL_DEFINITIONS = [
             }
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_directory",
+            "description": "Permanently delete a directory and everything inside it, including all files and subfolders. This is a destructive action and requires human confirmation before it takes effect.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Relative path to the directory to delete."}
+                },
+                "required": ["path"]
+            }
+        }
+    },
 ]

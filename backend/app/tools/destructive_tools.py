@@ -1,3 +1,4 @@
+import shutil
 from app.tools.path_validator import validate_path, PathValidationError
 
 
@@ -57,3 +58,29 @@ def delete_file(path: str) -> dict:
         return {"success": False, "error": {"type": "delete_failed", "message": str(e)}}
 
     return {"success": True, "data": {"deleted": path}}
+
+def delete_directory(path: str) -> dict:
+    """Permanently delete a directory and everything inside it."""
+    try:
+        target = validate_path(path)
+    except PathValidationError as e:
+        return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
+
+    if not target.exists():
+        return {"success": False, "error": {"type": "not_found", "message": f"'{path}' does not exist."}}
+    if not target.is_dir():
+        return {"success": False, "error": {"type": "not_a_directory", "message": f"'{path}' is a file. Use delete_file instead."}}
+
+    all_items = list(target.rglob("*"))
+    file_count = sum(1 for i in all_items if i.is_file())
+    folder_count = sum(1 for i in all_items if i.is_dir())
+
+    try:
+        shutil.rmtree(target)
+    except OSError as e:
+        return {"success": False, "error": {"type": "delete_failed", "message": str(e)}}
+
+    return {
+        "success": True,
+        "data": {"deleted": path, "files_removed": file_count, "folders_removed": folder_count},
+    }

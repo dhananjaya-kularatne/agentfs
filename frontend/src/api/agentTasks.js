@@ -31,3 +31,11 @@ export async function getSessionDetail(sessionId) {
   if (!response.ok) throw new Error("Failed to fetch session")
   return response.json()
 }
+
+export async function deleteSession(sessionId) {
+  const response = await fetch(`${API_BASE_URL}/api/agent/sessions/${sessionId}`, {
+    method: "DELETE",
+  })
+  if (!response.ok) throw new Error("Failed to delete session")
+  return response.json()
+}

@@ -14,7 +14,7 @@ function TreeNode({ node, depth = 0 }) {
 
 function SandboxTree({ tree, onRefresh }) {
   return (
-    <div className="w-64 border-l border-neutral-800 p-4">
+    <div className="w-full md:w-64 border-l border-neutral-800 p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-mono text-neutral-400">sandbox/</h2>
         <button

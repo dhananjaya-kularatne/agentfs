@@ -7,7 +7,7 @@ function SessionsSidebar({ sessions, activeSessionId, onSelectSession, onDeleteS
   }
 
   return (
-    <div className="w-56 border-r border-neutral-800 p-4">
+    <div className="w-full md:w-56 border-r border-neutral-800 p-4">
       <h2 className="text-sm font-mono text-neutral-400 mb-3">Sessions</h2>
       <div className="flex flex-col gap-1">
         {sessions.map((s) => (

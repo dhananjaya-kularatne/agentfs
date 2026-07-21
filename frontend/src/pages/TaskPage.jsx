@@ -104,7 +104,7 @@ function TaskPage() {
 }
 
   return (
-    <div className="min-h-screen bg-black text-neutral-100 flex">
+    <div className="min-h-screen bg-black text-neutral-100 flex flex-col md:flex-row">
       <SessionsSidebar
         sessions={sessions}
         activeSessionId={sessionId}

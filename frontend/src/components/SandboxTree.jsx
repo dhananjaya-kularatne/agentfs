@@ -24,7 +24,9 @@ function SandboxTree({ tree, onRefresh }) {
           ↻ refresh
         </button>
       </div>
-      {tree ? <TreeNode node={tree} /> : <p className="text-xs text-neutral-600">Loading...</p>}
+      {tree
+        ? tree.children?.map((child, i) => <TreeNode key={i} node={child} depth={0} />)
+        : <p className="text-xs text-neutral-600">Loading...</p>}
     </div>
   )
 }

@@ -1,13 +1,11 @@
 from pathlib import Path
-from app.config import settings
-
 
 class PathValidationError(Exception):
     """Raised when a requested path escapes the sandbox working directory."""
     pass
 
 
-def validate_path(relative_path: str) -> Path:
+def validate_path(relative_path: str, working_directory: Path) -> Path:
     """
     Resolve a user/agent-supplied relative path against the working directory,
     and ensure it does not escape the sandbox (blocks ../ traversal and symlink escapes).
@@ -17,7 +15,7 @@ def validate_path(relative_path: str) -> Path:
     if "\x00" in relative_path:
         raise PathValidationError("Path contains a null byte, which is not allowed.")
     
-    working_dir = Path(settings.agent_working_directory).resolve()    # C:\agentfs\backend\sandbox
+    working_dir = working_directory.resolve()    # C:\agentfs\backend\sandbox
     candidate = (working_dir / relative_path).resolve()
 
     if not candidate.is_relative_to(working_dir):

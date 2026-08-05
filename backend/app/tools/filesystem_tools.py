@@ -2,14 +2,13 @@ from pathlib import Path
 from app.tools.path_validator import validate_path, PathValidationError
 
 
-def get_directory_tree(path: str = ".", max_depth: int = 3) -> dict:
+def get_directory_tree(path: str, working_directory: Path, max_depth: int = 3) -> dict:
     """Return a nested folder/file structure starting at path, up to max_depth."""
     try:
-        target = validate_path(path)
+        target = validate_path(path, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 
-    #Checks whether the file exist
     if not target.exists():
         return {"success": False, "error": {"type": "not_found", "message": f"Path '{path}' does not exist."}}
 
@@ -24,10 +23,10 @@ def get_directory_tree(path: str = ".", max_depth: int = 3) -> dict:
     return {"success": True, "data": build_tree(target, 0)}
 
 
-def list_directory(path: str = ".") -> dict:
+def list_directory(path: str, working_directory: Path) -> dict:
     """List immediate files and folders inside path (non-recursive)."""
     try:
-        target = validate_path(path)
+        target = validate_path(path, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 
@@ -43,10 +42,10 @@ def list_directory(path: str = ".") -> dict:
     return {"success": True, "data": items}
 
 
-def read_file(path: str) -> dict:
+def read_file(path: str, working_directory: Path) -> dict:
     """Read and return the text contents of a file."""
     try:
-        target = validate_path(path)
+        target = validate_path(path, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 
@@ -63,10 +62,10 @@ def read_file(path: str) -> dict:
     return {"success": True, "data": content}
 
 
-def search_files(pattern: str, path: str = ".") -> dict:
+def search_files(pattern: str, path: str, working_directory: Path) -> dict:
     """Find files matching a glob pattern (e.g. '*.txt') within path, recursively."""
     try:
-        target = validate_path(path)
+        target = validate_path(path, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 
@@ -77,10 +76,10 @@ def search_files(pattern: str, path: str = ".") -> dict:
     return {"success": True, "data": matches}
 
 
-def get_file_info(path: str) -> dict:
+def get_file_info(path: str, working_directory: Path) -> dict:
     """Return size, type, and last-modified date for a file or folder."""
     try:
-        target = validate_path(path)
+        target = validate_path(path, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 

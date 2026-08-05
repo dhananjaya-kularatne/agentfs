@@ -2,58 +2,46 @@ import pytest
 from app.tools.path_validator import validate_path, PathValidationError
 
 
-def test_valid_path_inside_sandbox():
-    """A normal relative path inside the sandbox should resolve successfully."""
-    result = validate_path("test.txt")
+def test_valid_path_inside_sandbox(working_directory):
+    result = validate_path("test.txt", working_directory)
     assert result.name == "test.txt"
 
 
-def test_valid_nested_path():
-    """A path inside a subfolder should also resolve successfully."""
-    result = validate_path("reports/q1_summary.txt")
+def test_valid_nested_path(working_directory):
+    result = validate_path("reports/q1_summary.txt", working_directory)
     assert result.name == "q1_summary.txt"
 
 
-def test_blocks_parent_directory_traversal():
-    """A path attempting to escape via ../ should raise PathValidationError."""
+def test_blocks_parent_directory_traversal(working_directory):
     with pytest.raises(PathValidationError):
-        validate_path("../../Windows/System32")
+        validate_path("../../Windows/System32", working_directory)
 
 
-def test_blocks_absolute_path_outside_sandbox():
-    """An absolute path pointing outside the sandbox should raise PathValidationError."""
+def test_blocks_absolute_path_outside_sandbox(working_directory):
     with pytest.raises(PathValidationError):
-        validate_path("C:/Windows/System32")
+        validate_path("C:/Windows/System32", working_directory)
 
 
-def test_blocks_deeply_nested_traversal():
-    """Multiple levels of ../ chained together should still be caught."""
+def test_blocks_deeply_nested_traversal(working_directory):
     with pytest.raises(PathValidationError):
-        validate_path("reports/../../../../etc/passwd")
+        validate_path("reports/../../../../etc/passwd", working_directory)
 
-def test_url_encoded_sequences_treated_as_literal_filename():
-    """
-    URL-encoded traversal sequences are not decoded by this function -
-    they're treated as literal (harmless) filenames, since paths reach this
-    function as plain strings, not raw URL-encoded HTTP segments.
-    """
-    result = validate_path("%2e%2e")
+
+def test_url_encoded_sequences_treated_as_literal_filename(working_directory):
+    result = validate_path("%2e%2e", working_directory)
     assert result.name == "%2e%2e"
 
 
-def test_blocks_null_byte_in_path():
-    """A null byte in the path should not bypass validation."""
+def test_blocks_null_byte_in_path(working_directory):
     with pytest.raises((PathValidationError, ValueError)):
-        validate_path("test.txt\x00.jpg")
+        validate_path("test.txt\x00.jpg", working_directory)
 
 
-def test_empty_path_resolves_to_working_directory():
-    """An empty path should resolve to the working directory itself, not error."""
-    result = validate_path("")
+def test_empty_path_resolves_to_working_directory(working_directory):
+    result = validate_path("", working_directory)
     assert result.exists()
 
 
-def test_blocks_traversal_via_current_directory_tricks():
-    """Mixed ./ and ../ sequences should still be caught."""
+def test_blocks_traversal_via_current_directory_tricks(working_directory):
     with pytest.raises(PathValidationError):
-        validate_path("./reports/../../../../../etc/passwd")
+        validate_path("./reports/../../../../../etc/passwd", working_directory)

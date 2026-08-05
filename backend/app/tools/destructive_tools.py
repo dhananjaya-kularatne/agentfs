@@ -1,11 +1,12 @@
 import shutil
+from pathlib import Path
 from app.tools.path_validator import validate_path, PathValidationError
 
 
-def write_file(path: str, content: str) -> dict:
-    """Create or overwrite a file with the given content."""
+def write_file(path: str, content: str, working_directory: Path) -> dict:
+    """Create a new file or overwrite an existing file with the given content."""
     try:
-        target = validate_path(path)
+        target = validate_path(path, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 
@@ -18,11 +19,11 @@ def write_file(path: str, content: str) -> dict:
     return {"success": True, "data": {"path": path, "bytes_written": len(content.encode("utf-8"))}}
 
 
-def move_file(src: str, dest: str) -> dict:
-    """Move or rename a file/folder."""
+def move_file(src: str, dest: str, working_directory: Path) -> dict:
+    """Move or rename a file."""
     try:
-        src_target = validate_path(src)
-        dest_target = validate_path(dest)
+        src_target = validate_path(src, working_directory)
+        dest_target = validate_path(dest, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 
@@ -40,10 +41,10 @@ def move_file(src: str, dest: str) -> dict:
     return {"success": True, "data": {"from": src, "to": dest}}
 
 
-def delete_file(path: str) -> dict:
+def delete_file(path: str, working_directory: Path) -> dict:
     """Delete a file."""
     try:
-        target = validate_path(path)
+        target = validate_path(path, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 
@@ -59,10 +60,11 @@ def delete_file(path: str) -> dict:
 
     return {"success": True, "data": {"deleted": path}}
 
-def delete_directory(path: str) -> dict:
-    """Permanently delete a directory and everything inside it."""
+
+def delete_directory(path: str, working_directory: Path) -> dict:
+    """Delete a directory and everything inside it."""
     try:
-        target = validate_path(path)
+        target = validate_path(path, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 
@@ -80,7 +82,4 @@ def delete_directory(path: str) -> dict:
     except OSError as e:
         return {"success": False, "error": {"type": "delete_failed", "message": str(e)}}
 
-    return {
-        "success": True,
-        "data": {"deleted": path, "files_removed": file_count, "folders_removed": folder_count},
-    }
+    return {"success": True, "data": {"deleted": path, "files_removed": file_count, "folders_removed": folder_count}}

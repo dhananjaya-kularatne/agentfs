@@ -1,5 +1,6 @@
 import json
 import uuid
+from pathlib import Path
 from groq import Groq
 from app.config import settings
 from app.tools.tool_definitions import TOOL_DEFINITIONS
@@ -10,32 +11,53 @@ _client = Groq(api_key=settings.groq_api_key)
 
 SYSTEM_PROMPT = (
     "You are a filesystem agent. You can explore, read, and modify files in a sandboxed "
-    "working directory using the tools provided. Break the task into steps, "
-    "use tools to gather the information you need, and give a final clear answer "
-    "when you have enough information. Do not guess file contents you have not read. "
-    "Destructive actions (write_file, move_file, delete_file) require human confirmation "
-    "before they take effect."
+    "working directory using the tools provided. Break the task into steps, use tools to gather "
+    "the information you need, and give a final clear answer when you have enough information. "
+    "Do not guess file contents you have not read. Destructive actions (write_file, move_file, "
+    "delete_file, delete_directory) require human confirmation before they take effect."
 )
 
 MAX_ITERATIONS = 10
 
 
-async def run_agent_task(goal: str) -> dict:
-    """Start a new agent session and run the loop until it completes, pauses, or fails."""
+def get_client_working_directory(client_id: str) -> Path:
+    """
+    Return the sandbox directory scoped to a specific client, creating and seeding it with baseline demo files on first use. This is the core of
+    multi-user isolation: every client gets their own folder under the shared base sandbox path, so one visitor's files, uploads, and edits are never
+    visible to another.
+    """
+    base = Path(settings.agent_working_directory).resolve()
+    client_dir = base / client_id
+
+    if not client_dir.exists():
+        client_dir.mkdir(parents=True, exist_ok=True)
+        (client_dir / "test.txt").write_text("This is a test file for AgentFS.", encoding="utf-8")
+        (client_dir / "meeting_notes.txt").write_text("Meeting notes from Monday.", encoding="utf-8")
+        (client_dir / "reports").mkdir(exist_ok=True)
+        (client_dir / "reports" / "q1_summary.txt").write_text("Q1 financial summary.", encoding="utf-8")
+
+    return client_dir
+
+
+async def run_agent_task(goal: str, client_id: str) -> dict:
+    """Start a new agent session, scoped to this client's own sandbox directory."""
     session_id = str(uuid.uuid4())
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": goal},
     ]
+    await create_session(session_id, goal, client_id)
+    working_directory = get_client_working_directory(client_id)
+    return await _run_loop(session_id, messages, steps=[], seen_calls=set(), working_directory=working_directory)
 
-    await create_session(session_id, goal)
-    return await _run_loop(session_id, messages, steps=[], seen_calls=set())
 
-
-async def resume_agent_task(session_id: str, approved: bool) -> dict:
+async def resume_agent_task(session_id: str, approved: bool, client_id: str) -> dict:
     """Resume a paused session after a human approves or rejects the pending action."""
     session = await get_session(session_id)
     if session is None:
+        return {"status": "failed", "error": "Session not found."}
+    if session.get("client_id") != client_id:
+        # Do not reveal whether the session exists under a different client — same error either way.
         return {"status": "failed", "error": "Session not found."}
     if session["status"] != "pending_confirm":
         return {"status": "failed", "error": "Session is not awaiting confirmation."}
@@ -44,10 +66,11 @@ async def resume_agent_task(session_id: str, approved: bool) -> dict:
     steps = session["steps"]
     seen_calls = {tuple(c) for c in session.get("seen_calls", [])}
     pending = session["pending_action"]
+    working_directory = get_client_working_directory(client_id)
 
     if approved:
         tool_function = TOOL_REGISTRY[pending["tool"]]
-        result = tool_function(**pending["input"])
+        result = tool_function(**pending["input"], working_directory=working_directory)
     else:
         result = {"success": False, "error": {"type": "rejected_by_user", "message": "The user rejected this action."}}
 
@@ -65,10 +88,10 @@ async def resume_agent_task(session_id: str, approved: bool) -> dict:
         "content": json.dumps(result),
     })
 
-    return await _run_loop(session_id, messages, steps, seen_calls)
+    return await _run_loop(session_id, messages, steps, seen_calls, working_directory)
 
 
-async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: set) -> dict:
+async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: set, working_directory: Path) -> dict:
     """Shared loop logic used by both starting and resuming a session."""
     for iteration in range(MAX_ITERATIONS):
         try:
@@ -149,7 +172,7 @@ async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: se
             else:
                 seen_calls.add(call_signature)
                 tool_function = TOOL_REGISTRY.get(tool_name)
-                result = tool_function(**tool_args) if tool_function else {"success": False, "error": {"type": "unknown_tool", "message": f"No such tool: {tool_name}"}}
+                result = tool_function(**tool_args, working_directory=working_directory) if tool_function else {"success": False, "error": {"type": "unknown_tool", "message": f"No such tool: {tool_name}"}}
 
             steps.append({"type": "tool_call", "tool": tool_name, "input": tool_args, "output": result})
             messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": json.dumps(result)})

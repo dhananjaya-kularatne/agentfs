@@ -20,5 +20,5 @@ def health_check():
     """Check whether the server is alive and config loaded correctly."""
     return {
         "status": "AgentFS API is running",
-        "working_directory": settings.agent_working_directory
+        "base_sandbox_directory": settings.agent_working_directory
     }

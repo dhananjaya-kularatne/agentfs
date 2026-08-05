@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react"
 import { runTask, confirmAction, listSessions, getSessionDetail, deleteSession } from "../api/agentTasks"
 import { getSandboxTree } from "../api/sandboxTree"
+import { useClientId } from "../hooks/useClientId"
 import StepCard from "../components/StepCard"
 import SandboxTree from "../components/SandboxTree"
 import SessionsSidebar from "../components/SessionsSidebar"
 
 function TaskPage() {
+  const clientId = useClientId()
   const [goal, setGoal] = useState("")
   const [steps, setSteps] = useState([])
   const [sessionId, setSessionId] = useState(null)
@@ -14,14 +16,16 @@ function TaskPage() {
   const [tree, setTree] = useState(null)
   const [sessions, setSessions] = useState([])
 
+  // Wait until clientId is available (it's generated/loaded async on first render)  before making any API calls that require it.
   useEffect(() => {
+    if (!clientId) return
     refreshTree()
     refreshSessions()
-  }, [])
+  }, [clientId])
 
   async function refreshTree() {
     try {
-      const result = await getSandboxTree()
+      const result = await getSandboxTree(clientId)
       setTree(result.data)
     } catch (err) {
       console.error("Failed to load sandbox tree", err)
@@ -30,7 +34,7 @@ function TaskPage() {
 
   async function refreshSessions() {
     try {
-      const result = await listSessions()
+      const result = await listSessions(clientId)
       setSessions(result.sessions)
     } catch (err) {
       console.error("Failed to load sessions", err)
@@ -38,12 +42,12 @@ function TaskPage() {
   }
 
   async function handleRunTask() {
-    if (!goal.trim()) return
+    if (!goal.trim() || !clientId) return
     setIsRunning(true)
     setSteps([])
     setStatus(null)
     try {
-      const result = await runTask(goal)
+      const result = await runTask(goal, clientId)
       setSessionId(result.session_id)
       setSteps(result.steps)
       setStatus(result.status)
@@ -59,10 +63,10 @@ function TaskPage() {
   }
 
   async function handleConfirm(approved) {
-    if (!sessionId) return
+    if (!sessionId || !clientId) return
     setIsRunning(true)
     try {
-      const result = await confirmAction(sessionId, approved)
+      const result = await confirmAction(sessionId, approved, clientId)
       setSteps(result.steps)
       setStatus(result.status)
       if (result.status === "completed") {
@@ -78,7 +82,7 @@ function TaskPage() {
 
   async function handleSelectSession(id) {
     try {
-      const session = await getSessionDetail(id)
+      const session = await getSessionDetail(id, clientId)
       setSessionId(session._id)
       setSteps(session.steps)
       setStatus(session.status)
@@ -89,19 +93,19 @@ function TaskPage() {
   }
 
   async function handleDeleteSession(id) {
-  try {
-    await deleteSession(id)
-    if (id === sessionId) {
-      setSessionId(null)
-      setSteps([])
-      setStatus(null)
-      setGoal("")
+    try {
+      await deleteSession(id, clientId)
+      if (id === sessionId) {
+        setSessionId(null)
+        setSteps([])
+        setStatus(null)
+        setGoal("")
+      }
+      await refreshSessions()
+    } catch (err) {
+      console.error("Failed to delete session", err)
     }
-    await refreshSessions()
-  } catch (err) {
-    console.error("Failed to delete session", err)
   }
-}
 
   return (
     <div className="min-h-screen bg-black text-neutral-100 flex flex-col md:flex-row">

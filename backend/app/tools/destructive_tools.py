@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 from app.tools.path_validator import validate_path, PathValidationError
+from app.tools.limits import MAX_FILE_BYTES
 
 
 def write_file(path: str, content: str, working_directory: Path) -> dict:
@@ -10,11 +11,14 @@ def write_file(path: str, content: str, working_directory: Path) -> dict:
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
 
+    if len(content.encode("utf-8")) > MAX_FILE_BYTES:
+        return {"success": False, "error": {"type": "content_too_large", "message": f"Content exceeds the {MAX_FILE_BYTES}-byte write limit."}}
+
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
     except OSError as e:
-        return {"success": False, "error": {"type": "write_failed", "message": str(e)}}
+        return {"success": False, "error": {"type": "write_failed", "message": f"Could not write '{path}': {e.strerror or 'operation failed'}."}}
 
     return {"success": True, "data": {"path": path, "bytes_written": len(content.encode("utf-8"))}}
 
@@ -36,7 +40,7 @@ def move_file(src: str, dest: str, working_directory: Path) -> dict:
         dest_target.parent.mkdir(parents=True, exist_ok=True)
         src_target.rename(dest_target)
     except OSError as e:
-        return {"success": False, "error": {"type": "move_failed", "message": str(e)}}
+        return {"success": False, "error": {"type": "move_failed", "message": f"Could not move '{src}': {e.strerror or 'operation failed'}."}}
 
     return {"success": True, "data": {"from": src, "to": dest}}
 
@@ -56,7 +60,7 @@ def delete_file(path: str, working_directory: Path) -> dict:
     try:
         target.unlink()
     except OSError as e:
-        return {"success": False, "error": {"type": "delete_failed", "message": str(e)}}
+        return {"success": False, "error": {"type": "delete_failed", "message": f"Could not delete '{path}': {e.strerror or 'operation failed'}."}}
 
     return {"success": True, "data": {"deleted": path}}
 
@@ -80,6 +84,6 @@ def delete_directory(path: str, working_directory: Path) -> dict:
     try:
         shutil.rmtree(target)
     except OSError as e:
-        return {"success": False, "error": {"type": "delete_failed", "message": str(e)}}
+        return {"success": False, "error": {"type": "delete_failed", "message": f"Could not delete '{path}': {e.strerror or 'operation failed'}."}}
 
     return {"success": True, "data": {"deleted": path, "files_removed": file_count, "folders_removed": folder_count}}

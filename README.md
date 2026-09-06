@@ -36,7 +36,7 @@ FastAPI backend
 | Backend | FastAPI | Async Python web framework |
 | LLM | Groq API (Llama 3.3 70B) | Direct tool-calling, no agent framework |
 | Structured storage | MongoDB (Motor, async driver) | Full session and step history |
-| Testing | pytest | 31 tests covering path safety and all tools |
+| Testing | pytest | 63 tests covering path safety, client-ID safety, resource limits, and all tools |
 
 No agent framework (e.g. LangChain) is used. The tool-calling loop, path validation, and confirmation gate are implemented directly against Groq's native tool-calling API, so every stage of the reasoning loop is visible and independently testable rather than hidden behind a framework abstraction.
 
@@ -60,7 +60,13 @@ Path safety is the single most important property of this system, since the agen
 - Null bytes in a path are explicitly rejected. This check was added after a dedicated security test revealed that Windows does not reject null-byte paths at the OS layer the way some other platforms do — an assumption that initially seemed safe but was found to be incorrect through testing, not by inspection.
 - URL-encoded traversal sequences (`%2e%2e`) are treated as literal, harmless filenames rather than decoded, since paths reach this function as plain strings rather than raw HTTP path segments; this is documented and tested explicitly rather than left ambiguous.
 
-This logic is covered by 26 dedicated tests in `test_path_validator.py` and `test_filesystem_tools.py`, exercising both the happy path and every attack category above.
+This logic is covered by dedicated tests in `test_path_validator.py` and `test_filesystem_tools.py`, exercising both the happy path and every attack category above.
+
+The sandbox *root* is as much attacker-controlled input as any tool path: it is built from the `X-Client-Id` header, joined to the base sandbox directory as a folder name. `validate_client_id` (in `path_validator.py`) is applied before that join — the ID must be 8–128 characters of `[A-Za-z0-9_-]`, with no path separators, `..`, or null bytes — and `get_client_working_directory` then re-resolves the result and asserts it is strictly inside the base. Without this, a header like `../../../..` or `C:/Windows/Temp` would relocate the sandbox root itself and every path check downstream would pass relative to an attacker-chosen directory. Covered by `test_client_id_validator.py`.
+
+### Resource limits
+
+The agent's tool calls are shaped by task text and by file contents it reads, so every tool that could be driven into unbounded work has an explicit ceiling (`app/tools/limits.py`): 1 MiB per file read or write, 1000 search results, directory-tree depth clamped to 8 and capped at 5000 visited nodes. Responses that hit a cap are flagged with `"truncated": true`. The unauthenticated agent endpoints are additionally rate-limited per client (default 20 calls / 60 s) so an open endpoint cannot drain the deployment's LLM quota.
 
 ## Setup
 
@@ -83,7 +89,12 @@ GROQ_API_KEY=your_groq_api_key_here
 MONGODB_URI=mongodb://localhost:27017
 MONGODB_DB_NAME=agentfs
 AGENT_WORKING_DIRECTORY=./sandbox
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+RATE_LIMIT_MAX_TASKS=20
+RATE_LIMIT_WINDOW_SECONDS=60
 ```
+
+`ALLOWED_ORIGINS` (comma-separated) and the two `RATE_LIMIT_*` values have sensible defaults and can be omitted for local development.
 
 Run the server:
 
@@ -110,7 +121,7 @@ cd backend
 pytest -v
 ```
 
-31 tests cover path validation (traversal, absolute paths, null bytes, encoded sequences), all read-only tools, and all destructive tools, using an isolated temporary directory per test so no test run touches the real sandbox.
+63 tests cover path validation (traversal, absolute paths, null bytes, encoded sequences), client-ID validation (traversal, absolute, empty), resource limits, the rate limiter, error-message disclosure, and all read-only and destructive tools, using an isolated temporary directory per test so no test run touches the real sandbox.
 
 ## API reference
 
@@ -123,13 +134,13 @@ pytest -v
 | DELETE | `/api/agent/sessions/{session_id}` | Delete a session |
 | GET | `/api/sandbox/tree` | Get the requesting client's sandbox directory tree |
 
-All endpoints require an `X-Client-Id` header, used to scope sandbox and session data to the requesting browser.
+All endpoints require an `X-Client-Id` header, used to scope sandbox and session data to the requesting browser. It is validated to a safe path-segment shape before use; a malformed value returns `400`. The agent endpoints also return `429` (with `Retry-After`) when a client exceeds its rate-limit budget.
 
 ## Known limitations
 
 - **The agent operates on a sandboxed demo directory, not real files.** This is a deliberate design choice: granting an autonomous agent unrestricted access to a real filesystem, especially in a publicly deployed environment, would remove the safety boundary this project is built around. The sandbox is seeded with a few sample files on first visit per client.
 - **The iteration cap (10 tool-calling rounds) can cause a task to fail without a clear answer** if a goal genuinely requires more steps than that to resolve. This is a deliberate safeguard against runaway loops, at the cost of occasionally cutting off a legitimately long task.
-- **Client identity is a browser-generated identifier stored in local storage, not an authenticated account.** Clearing browser storage or switching browsers creates a new, unrelated identity with a fresh sandbox. This is sufficient for isolating casual visitors from each other but is not a substitute for real authentication.
+- **Client identity is a browser-generated identifier stored in local storage, not an authenticated account.** Clearing browser storage or switching browsers creates a new, unrelated identity with a fresh sandbox. The identifier's *shape* is validated so it cannot be used to escape the sandbox or reach another client's data by traversal, but it is still an unauthenticated bearer value: anyone who obtains another client's ID can act as that client. This is sufficient for isolating casual visitors from each other but is not a substitute for real authentication.
 
 ## Project structure
 
@@ -139,8 +150,8 @@ agentfs/
 │   ├── app/
 │   │   ├── models/       # Pydantic request/response models
 │   │   ├── routers/      # FastAPI route handlers (agent, sandbox)
-│   │   ├── services/     # Agent loop, MongoDB persistence
-│   │   └── tools/        # Path validation, filesystem tools, tool registry
+│   │   ├── services/     # Agent loop, MongoDB persistence, rate limiter
+│   │   └── tools/        # Path/client-ID validation, filesystem tools, resource limits, tool registry
 │   └── tests/
 └── frontend/
     └── src/

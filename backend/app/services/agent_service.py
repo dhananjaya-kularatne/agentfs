@@ -112,7 +112,7 @@ async def resume_agent_task(session_id: str, approved: bool, client_id: str) -> 
 
 async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: set, working_directory: Path) -> dict:
     """Shared loop logic used by both starting and resuming a session."""
-    for iteration in range(MAX_ITERATIONS):
+    for _ in range(MAX_ITERATIONS):
         try:
             # The Groq SDK call is blocking; run it off the event loop so one
             # in-flight task does not stall every other request on the server.

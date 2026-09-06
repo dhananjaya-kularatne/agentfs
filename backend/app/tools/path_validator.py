@@ -3,12 +3,10 @@ from pathlib import Path
 
 class PathValidationError(Exception):
     """Raised when a requested path escapes the sandbox working directory."""
-    pass
 
 
 class ClientIdValidationError(Exception):
     """Raised when a client identifier is malformed or unsafe to use as a path segment."""
-    pass
 
 
 # A client ID is used directly as a directory name under the shared sandbox root,

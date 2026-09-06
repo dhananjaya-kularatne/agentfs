@@ -16,7 +16,7 @@ app.add_middleware(
 
 
 @app.exception_handler(ClientIdValidationError)
-async def client_id_validation_error_handler(request: Request, exc: ClientIdValidationError):
+async def client_id_validation_error_handler(_request: Request, exc: ClientIdValidationError):
     """A malformed X-Client-Id is a bad request, not a server error."""
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 

@@ -26,8 +26,5 @@ app.include_router(sandbox.router)
 
 @app.get("/health")
 def health_check():
-    """Check whether the server is alive and config loaded correctly."""
-    return {
-        "status": "AgentFS API is running",
-        "base_sandbox_directory": settings.agent_working_directory
-    }
+    """Liveness check. Deliberately exposes no configuration or path details."""
+    return {"status": "AgentFS API is running"}

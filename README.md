@@ -19,7 +19,7 @@ React frontend (Vite + Tailwind)
       v
 FastAPI backend
       |
-      +-- Groq (Llama 3.3)      reasons about the task, requests tool calls
+      +-- Groq (configurable model) reasons about the task, requests tool calls
       +-- Tool registry         read-only + destructive filesystem tools
       +-- Path validator        blocks traversal, absolute paths, null bytes
       +-- MongoDB                persists full session history, per client
@@ -34,7 +34,7 @@ FastAPI backend
 |---|---|---|
 | Frontend | React, Vite, Tailwind CSS | |
 | Backend | FastAPI | Async Python web framework |
-| LLM | Groq API (Llama 3.3 70B) | Direct tool-calling, no agent framework |
+| LLM | Groq API (model set by `GROQ_MODEL`, default `openai/gpt-oss-120b`) | Direct tool-calling, no agent framework |
 | Structured storage | MongoDB (Motor, async driver) | Full session and step history |
 | Testing | pytest | 63 tests covering path safety, client-ID safety, resource limits, and all tools |
 
@@ -86,6 +86,7 @@ cp .env.example .env
 
 ```
 GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=openai/gpt-oss-120b
 MONGODB_URI=mongodb://localhost:27017
 MONGODB_DB_NAME=agentfs
 AGENT_WORKING_DIRECTORY=./sandbox
@@ -94,7 +95,7 @@ RATE_LIMIT_MAX_TASKS=20
 RATE_LIMIT_WINDOW_SECONDS=60
 ```
 
-`ALLOWED_ORIGINS` (comma-separated) and the two `RATE_LIMIT_*` values have sensible defaults and can be omitted for local development.
+Only `GROQ_API_KEY` is mandatory. `GROQ_MODEL` must be a Groq model your key can access that supports tool calling (check `GET /openai/v1/models`); `ALLOWED_ORIGINS` (comma-separated) and the two `RATE_LIMIT_*` values have sensible defaults and can be omitted for local development.
 
 Run the server:
 

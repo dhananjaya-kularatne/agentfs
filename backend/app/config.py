@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     groq_api_key: str
+    groq_model: str = "openai/gpt-oss-120b"
     mongodb_uri: str
     mongodb_db_name: str
     agent_working_directory: str

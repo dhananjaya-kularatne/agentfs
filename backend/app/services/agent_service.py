@@ -1,3 +1,4 @@
+import asyncio
 import json
 import uuid
 from pathlib import Path
@@ -109,7 +110,10 @@ async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: se
     """Shared loop logic used by both starting and resuming a session."""
     for iteration in range(MAX_ITERATIONS):
         try:
-            response = _client.chat.completions.create(
+            # The Groq SDK call is blocking; run it off the event loop so one
+            # in-flight task does not stall every other request on the server.
+            response = await asyncio.to_thread(
+                _client.chat.completions.create,
                 model="llama-3.3-70b-versatile",
                 messages=messages,
                 tools=TOOL_DEFINITIONS,

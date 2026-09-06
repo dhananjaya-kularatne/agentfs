@@ -134,7 +134,7 @@ function TaskPage() {
             <h1 className="text-xl font-mono font-semibold tracking-tight">AgentFS</h1>
           </div>
           <p className="text-sm text-neutral-500 mb-6">
-            An autonomous agent that explores, reads, and safely modifies files — with human approval required for anything destructive.
+            An autonomous agent that explores, reads, and safely modifies files, with human approval required for anything destructive.
           </p>
 
           <div className="flex gap-2 mb-4">

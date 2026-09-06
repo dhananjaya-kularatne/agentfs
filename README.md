@@ -19,14 +19,15 @@ React frontend (Vite + Tailwind)
       v
 FastAPI backend
       |
-      +-- Groq (configurable model) reasons about the task, requests tool calls
-      +-- Tool registry         read-only + destructive filesystem tools
-      +-- Path validator        blocks traversal, absolute paths, null bytes
-      +-- MongoDB                persists full session history, per client
-      +-- Per-client sandbox     isolated working directory per browser
+      +-- Groq LLM           reasons about the task, requests tool calls (model set by GROQ_MODEL)
+      +-- Tool registry      read-only + destructive filesystem tools
+      +-- Path/ID validator  blocks traversal, absolute paths, null bytes; checks client IDs
+      +-- Rate limiter       per-client cap on agent task calls
+      +-- MongoDB            persists full session history, per client
+      +-- Per-client sandbox isolated working directory per browser
 ```
 
-**Task flow:** a natural-language goal is sent to the LLM along with a list of available tools. The LLM requests tools one at a time — read-only tools (listing, reading, searching files) execute immediately; destructive tools (write, move, delete) are intercepted before execution, and the session pauses in a `pending_confirm` state. The pending action, described in plain language, is shown to the user with approve/reject controls. Only on approval does the tool actually run. This repeats until the LLM has enough information to produce a final answer, or a configured iteration limit is reached.
+**Task flow:** a natural-language goal is sent to the LLM along with a list of available tools. The LLM requests tools one at a time — read-only tools (listing, reading, searching files) execute immediately; destructive tools (write, move, delete) are intercepted before execution, and the session pauses in a `pending_confirm` state. The pending action, described in plain language, is shown to the user with approve/reject controls. Only on approval does the tool actually run. This repeats until the LLM has enough information to produce a final answer, or the iteration limit (10 tool-calling rounds) is reached.
 
 ## Tech stack
 
@@ -95,7 +96,7 @@ RATE_LIMIT_MAX_TASKS=20
 RATE_LIMIT_WINDOW_SECONDS=60
 ```
 
-Only `GROQ_API_KEY` is mandatory. `GROQ_MODEL` must be a Groq model your key can access that supports tool calling (check `GET /openai/v1/models`); `ALLOWED_ORIGINS` (comma-separated) and the two `RATE_LIMIT_*` values have sensible defaults and can be omitted for local development.
+Only `GROQ_API_KEY` is mandatory. `GROQ_MODEL` must be a Groq model your key can access that supports tool calling (list them with `curl -H "Authorization: Bearer $GROQ_API_KEY" https://api.groq.com/openai/v1/models`); `ALLOWED_ORIGINS` (comma-separated) and the two `RATE_LIMIT_*` values have sensible defaults and can be omitted for local development.
 
 Run the server:
 

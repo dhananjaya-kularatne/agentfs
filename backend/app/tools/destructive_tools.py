@@ -77,6 +77,7 @@ def delete_directory(path: str, working_directory: Path) -> dict:
     if not target.is_dir():
         return {"success": False, "error": {"type": "not_a_directory", "message": f"'{path}' is a file. Use delete_file instead."}}
 
+    # Count contents before removal so the result can report what was deleted.
     all_items = list(target.rglob("*"))
     file_count = sum(1 for i in all_items if i.is_file())
     folder_count = sum(1 for i in all_items if i.is_dir())

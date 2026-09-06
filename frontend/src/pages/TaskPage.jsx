@@ -31,6 +31,7 @@ function TaskPage() {
     refreshSessions()
   }, [clientId])
 
+  // Reload the sandbox file tree from the backend.
   async function refreshTree() {
     try {
       const result = await getSandboxTree(clientId)
@@ -40,6 +41,7 @@ function TaskPage() {
     }
   }
 
+  // Reload this client's session list for the sidebar.
   async function refreshSessions() {
     try {
       const result = await listSessions(clientId)
@@ -49,6 +51,7 @@ function TaskPage() {
     }
   }
 
+  // Submit the goal, render the returned steps, and refresh views if the task completed.
   async function handleRunTask() {
     if (!goal.trim() || !clientId) return
     setIsRunning(true)
@@ -70,6 +73,7 @@ function TaskPage() {
     }
   }
 
+  // Send the human's approve/reject decision and resume the paused session.
   async function handleConfirm(approved) {
     if (!sessionId || !clientId) return
     setIsRunning(true)
@@ -88,6 +92,7 @@ function TaskPage() {
     }
   }
 
+  // Load a past session from the sidebar into the main view.
   async function handleSelectSession(id) {
     try {
       const session = await getSessionDetail(id, clientId)
@@ -100,6 +105,7 @@ function TaskPage() {
     }
   }
 
+  // Delete a session and clear the main view if it was the active one.
   async function handleDeleteSession(id) {
     try {
       await deleteSession(id, clientId)

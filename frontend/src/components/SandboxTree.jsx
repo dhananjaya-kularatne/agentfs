@@ -1,3 +1,4 @@
+// One row of the file tree; recurses for directories, indenting by depth.
 function TreeNode({ node, depth = 0 }) {
   const isDirectory = node.type === "directory"
   return (
@@ -12,6 +13,7 @@ function TreeNode({ node, depth = 0 }) {
   )
 }
 
+// Right-hand sidebar: the client's sandbox contents with a manual refresh button.
 function SandboxTree({ tree, onRefresh }) {
   return (
     <div className="w-full md:w-64 border-l border-neutral-800 p-4">

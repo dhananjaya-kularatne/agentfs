@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     @property
     def allowed_origins_list(self) -> list[str]:
+        # Parsed list form of the comma-separated ALLOWED_ORIGINS string.
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
 
 

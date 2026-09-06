@@ -24,6 +24,7 @@ def get_directory_tree(path: str, working_directory: Path, max_depth: int = 3) -
     node_count = 0
     truncated = False
 
+    # Recurse depth-first, honouring the depth clamp and the shared node budget.
     def build_tree(current: Path, depth: int) -> dict:
         nonlocal node_count, truncated
         node = {"name": current.name, "type": "directory" if current.is_dir() else "file"}

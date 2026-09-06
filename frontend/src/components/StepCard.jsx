@@ -10,11 +10,13 @@ const TOOL_DESCRIPTIONS = {
   delete_directory: (input) => `Permanently delete the folder "${input.path}" and everything inside it`,
 }
 
+// Plain-language phrasing for a tool call; falls back to raw name + args if unknown.
 function describeTool(tool, input) {
   const describe = TOOL_DESCRIPTIONS[tool]
   return describe ? describe(input) : `${tool}(${JSON.stringify(input)})`
 }
 
+// Summarise a tool's result payload for the trace view, per tool type.
 function describeResult(tool, output) {
   if (!output?.success) {
     return `Failed: ${output?.error?.message || "unknown error"}`
@@ -42,6 +44,7 @@ function describeResult(tool, output) {
   return "Done"
 }
 
+// Renders one step of the agent's trace; shape depends on step.type.
 function StepCard({ step, onApprove, onReject, isPending }) {
   const baseClasses = "rounded-lg border p-3 text-sm"
 

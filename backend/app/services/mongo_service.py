@@ -29,10 +29,12 @@ async def create_session(session_id: str, goal: str, client_id: str) -> dict:
     return record
 
 
+# Fetch one session by id. Not client-scoped — callers must verify ownership themselves.
 async def get_session(session_id: str) -> dict | None:
     return await sessions_collection.find_one({"_id": session_id})
 
 
+# Merge the given fields into a session document.
 async def update_session(session_id: str, updates: dict) -> None:
     await sessions_collection.update_one({"_id": session_id}, {"$set": updates})
 

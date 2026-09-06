@@ -1,3 +1,4 @@
+// Left-hand sidebar: list of this client's past sessions, selectable and deletable.
 function SessionsSidebar({ sessions, activeSessionId, onSelectSession, onDeleteSession }) {
   const statusColor = {
     completed: "text-green-400",

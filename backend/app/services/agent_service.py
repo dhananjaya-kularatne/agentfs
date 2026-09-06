@@ -136,6 +136,7 @@ async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: se
 
         message = response.choices[0].message
 
+        # No tool calls means the model is done reasoning: this turn is the answer.
         if not message.tool_calls:
             steps.append({"type": "final_answer", "content": message.content})
             await update_session(session_id, {
@@ -148,6 +149,7 @@ async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: se
             })
             return {"status": "completed", "final_answer": message.content, "pending_action": None, "steps": steps, "session_id": session_id, "error": None}
 
+        # Replay the model's tool-calling turn into the history before executing the calls.
         assistant_message = {
             "role": "assistant",
             "content": message.content,
@@ -170,6 +172,7 @@ async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: se
             tool_name = tool_call.function.name
             tool_args = json.loads(tool_call.function.arguments)
 
+            # Destructive tool: stop, persist a pending_confirm state, and wait for a human.
             if tool_name in DESTRUCTIVE_TOOLS:
                 pending_action = {
                     "tool": tool_name,
@@ -188,6 +191,7 @@ async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: se
                 })
                 return {"status": "pending_confirm", "final_answer": None, "pending_action": pending_action, "session_id": session_id, "steps": steps, "error": None}
 
+            # Read-only tool: reject an exact repeat (stuck-loop guard), otherwise run it now.
             call_signature = (tool_name, json.dumps(tool_args, sort_keys=True))
             if call_signature in seen_calls:
                 result = {"success": False, "error": {"type": "duplicate_call", "message": "You already called this exact tool with these exact arguments. Try a different approach."}}
@@ -199,6 +203,7 @@ async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: se
             steps.append({"type": "tool_call", "tool": tool_name, "input": tool_args, "output": result})
             messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": json.dumps(result)})
 
+    # Loop exhausted without the model producing a final answer.
     await update_session(session_id, {
         "status": "failed",
         "error": "Max iterations reached.",

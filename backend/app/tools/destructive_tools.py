@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 from app.tools.path_validator import validate_path, PathValidationError
+from app.tools.limits import MAX_FILE_BYTES
 
 
 def write_file(path: str, content: str, working_directory: Path) -> dict:
@@ -9,6 +10,9 @@ def write_file(path: str, content: str, working_directory: Path) -> dict:
         target = validate_path(path, working_directory)
     except PathValidationError as e:
         return {"success": False, "error": {"type": "path_validation", "message": str(e)}}
+
+    if len(content.encode("utf-8")) > MAX_FILE_BYTES:
+        return {"success": False, "error": {"type": "content_too_large", "message": f"Content exceeds the {MAX_FILE_BYTES}-byte write limit."}}
 
     try:
         target.parent.mkdir(parents=True, exist_ok=True)

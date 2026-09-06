@@ -1,5 +1,11 @@
 from pathlib import Path
 from app.tools.path_validator import validate_path, PathValidationError
+from app.tools.limits import (
+    MAX_FILE_BYTES,
+    MAX_SEARCH_RESULTS,
+    MAX_TREE_DEPTH,
+    MAX_TREE_NODES,
+)
 
 
 def get_directory_tree(path: str, working_directory: Path, max_depth: int = 3) -> dict:
@@ -12,15 +18,31 @@ def get_directory_tree(path: str, working_directory: Path, max_depth: int = 3) -
     if not target.exists():
         return {"success": False, "error": {"type": "not_found", "message": f"Path '{path}' does not exist."}}
 
+    # Clamp the requested depth so a large or malicious value cannot drive an
+    # unbounded walk, and stop entirely once the node budget is spent.
+    effective_depth = max(0, min(max_depth, MAX_TREE_DEPTH))
+    node_count = 0
+    truncated = False
+
     def build_tree(current: Path, depth: int) -> dict:
+        nonlocal node_count, truncated
         node = {"name": current.name, "type": "directory" if current.is_dir() else "file"}
-        if current.is_dir() and depth < max_depth:
-            node["children"] = [
-                build_tree(child, depth + 1) for child in sorted(current.iterdir())
-            ]
+        if current.is_dir() and depth < effective_depth:
+            children = []
+            for child in sorted(current.iterdir()):
+                if node_count >= MAX_TREE_NODES:
+                    truncated = True
+                    break
+                node_count += 1
+                children.append(build_tree(child, depth + 1))
+            node["children"] = children
         return node
 
-    return {"success": True, "data": build_tree(target, 0)}
+    tree = build_tree(target, 0)
+    result = {"success": True, "data": tree}
+    if truncated:
+        result["truncated"] = True
+    return result
 
 
 def list_directory(path: str, working_directory: Path) -> dict:
@@ -54,6 +76,9 @@ def read_file(path: str, working_directory: Path) -> dict:
     if target.is_dir():
         return {"success": False, "error": {"type": "is_a_directory", "message": f"'{path}' is a directory, not a file."}}
 
+    if target.stat().st_size > MAX_FILE_BYTES:
+        return {"success": False, "error": {"type": "file_too_large", "message": f"'{path}' exceeds the {MAX_FILE_BYTES}-byte read limit."}}
+
     try:
         content = target.read_text(encoding="utf-8")
     except UnicodeDecodeError:
@@ -72,8 +97,18 @@ def search_files(pattern: str, path: str, working_directory: Path) -> dict:
     if not target.exists() or not target.is_dir():
         return {"success": False, "error": {"type": "not_found", "message": f"Directory '{path}' does not exist."}}
 
-    matches = [str(p.relative_to(target)) for p in target.rglob(pattern)]
-    return {"success": True, "data": matches}
+    matches = []
+    truncated = False
+    for p in target.rglob(pattern):
+        if len(matches) >= MAX_SEARCH_RESULTS:
+            truncated = True
+            break
+        matches.append(str(p.relative_to(target)))
+
+    result = {"success": True, "data": matches}
+    if truncated:
+        result["truncated"] = True
+    return result
 
 
 def get_file_info(path: str, working_directory: Path) -> dict:

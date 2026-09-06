@@ -5,6 +5,7 @@ from groq import Groq
 from app.config import settings
 from app.tools.tool_definitions import TOOL_DEFINITIONS
 from app.tools.tool_registry import TOOL_REGISTRY, DESTRUCTIVE_TOOLS
+from app.tools.path_validator import validate_client_id, ClientIdValidationError
 from app.services.mongo_service import create_session, get_session, update_session
 
 _client = Groq(api_key=settings.groq_api_key)
@@ -25,9 +26,22 @@ def get_client_working_directory(client_id: str) -> Path:
     Return the sandbox directory scoped to a specific client, creating and seeding it with baseline demo files on first use. This is the core of
     multi-user isolation: every client gets their own folder under the shared base sandbox path, so one visitor's files, uploads, and edits are never
     visible to another.
+
+    The client ID is untrusted input from the ``X-Client-Id`` header. It is
+    validated to a single safe path segment and the resolved directory is
+    re-checked against the base, so a malicious value can never relocate the
+    sandbox root outside ``agent_working_directory``. Raises
+    ``ClientIdValidationError`` for a malformed ID.
     """
+    validate_client_id(client_id)
+
     base = Path(settings.agent_working_directory).resolve()
-    client_dir = base / client_id
+    client_dir = (base / client_id).resolve()
+
+    if not client_dir.is_relative_to(base) or client_dir == base:
+        # Defence in depth: validate_client_id already rejects separators and
+        # traversal, so reaching here means something upstream changed.
+        raise ClientIdValidationError("Client ID does not resolve to a directory inside the sandbox.")
 
     if not client_dir.exists():
         client_dir.mkdir(parents=True, exist_ok=True)

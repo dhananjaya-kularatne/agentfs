@@ -114,7 +114,7 @@ async def _run_loop(session_id: str, messages: list, steps: list, seen_calls: se
             # in-flight task does not stall every other request on the server.
             response = await asyncio.to_thread(
                 _client.chat.completions.create,
-                model="llama-3.3-70b-versatile",
+                model=settings.groq_model,
                 messages=messages,
                 tools=TOOL_DEFINITIONS,
                 tool_choice="auto",

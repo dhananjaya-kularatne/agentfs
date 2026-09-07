@@ -4,7 +4,7 @@ An autonomous filesystem agent that explores, reads, and modifies files in a san
 
 ## Overview
 
-AgentFS demonstrates a core pattern in agentic AI systems: giving a language model the ability to take real, consequential actions, while keeping a human explicitly in the loop for anything irreversible. The agent reasons about a task, calls tools one at a time, and shows its full reasoning trace live rather than returning a single opaque answer.
+AgentFS demonstrates a core pattern in agentic AI systems: giving a language model the ability to take real, consequential actions, while keeping a human explicitly in the loop for anything irreversible. The agent works through a task one tool call at a time, and every step — each tool call, its result, and every confirmation decision — is recorded and shown as a readable trace rather than collapsed into a single opaque answer.
 
 The project's primary focus is safety architecture rather than agent capability for its own sake. Path traversal protection, a strictly bounded sandbox, and a pause-for-confirmation gate on destructive operations are treated as first-class requirements, not afterthoughts, and are backed by an automated security test suite.
 
@@ -47,7 +47,7 @@ No agent framework (e.g. LangChain) is used. The tool-calling loop, path validat
 - **Human-in-the-loop safety gate.** Destructive actions (`write_file`, `move_file`, `delete_file`, `delete_directory`) cannot execute without explicit user approval. This is enforced in the tool-calling loop itself, not left to the model's judgment.
 - **Sandboxed filesystem access.** Every path is validated against a strict working-directory boundary before any operation touches disk. Traversal attempts (`../`), absolute paths outside the sandbox, and null-byte injection are all explicitly blocked and covered by tests.
 - **Stuck-loop detection.** If the agent requests the exact same tool call with the exact same arguments more than once, the duplicate is blocked and the agent is nudged to try a different approach, preventing infinite retry loops.
-- **Live reasoning trace.** Every tool call, its result, and the final answer are streamed to the UI as they happen, in human-readable descriptions rather than raw JSON.
+- **Step-by-step trace.** Every tool call, its result, each confirmation decision, and the final answer are recorded as an ordered trace and rendered in the UI as human-readable descriptions rather than raw JSON. The trace is returned in batches — each time the agent pauses for approval, and when it finishes — not streamed token by token.
 - **Full session persistence.** Every task's complete history, including every tool call and confirmation decision, is saved to MongoDB and can be revisited later.
 - **Per-client isolation.** Each browser is assigned a private identifier on first visit, used to scope both the sandbox filesystem and the session history. Two visitors to the same deployment never see or affect each other's files or task history.
 - **Responsive layout.** The document/file tree sidebar collapses into a toggleable overlay on narrow viewports.

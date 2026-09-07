@@ -46,11 +46,11 @@ No agent framework (e.g. LangChain) is used. The tool-calling loop, path validat
 - **Autonomous multi-step reasoning.** The agent breaks a task into steps, calling tools as needed and reading their results before deciding what to do next, rather than following a fixed script.
 - **Human-in-the-loop safety gate.** Destructive actions (`write_file`, `move_file`, `delete_file`, `delete_directory`) cannot execute without explicit user approval. This is enforced in the tool-calling loop itself, not left to the model's judgment.
 - **Sandboxed filesystem access.** Every path is validated against a strict working-directory boundary before any operation touches disk. Traversal attempts (`../`), absolute paths outside the sandbox, and null-byte injection are all explicitly blocked and covered by tests.
-- **Stuck-loop detection.** If the agent requests the exact same tool call with the exact same arguments more than once, the duplicate is blocked and the agent is nudged to try a different approach, preventing infinite retry loops.
+- **Stuck-loop detection.** If the agent requests the exact same read-only tool call with the exact same arguments more than once, the duplicate is blocked and the agent is nudged to try a different approach, preventing infinite retry loops. (Destructive calls are gated by human confirmation instead.)
 - **Step-by-step trace.** Every tool call, its result, each confirmation decision, and the final answer are recorded as an ordered trace and rendered in the UI as human-readable descriptions rather than raw JSON. The trace is returned in batches — each time the agent pauses for approval, and when it finishes — not streamed token by token.
 - **Full session persistence.** Every task's complete history, including every tool call and confirmation decision, is saved to MongoDB and can be revisited later.
 - **Per-client isolation.** Each browser is assigned a private identifier on first visit, used to scope both the sandbox filesystem and the session history. Two visitors to the same deployment never see or affect each other's files or task history.
-- **Responsive layout.** The document/file tree sidebar collapses into a toggleable overlay on narrow viewports.
+- **Responsive layout.** On wide screens the session list, task view, and sandbox tree sit side by side; on narrow viewports they stack vertically and padding tightens.
 
 ## Security design
 
@@ -67,7 +67,7 @@ The sandbox *root* is as much attacker-controlled input as any tool path: it is 
 
 ### Resource limits
 
-The agent's tool calls are shaped by task text and by file contents it reads, so every tool that could be driven into unbounded work has an explicit ceiling (`app/tools/limits.py`): 1 MiB per file read or write, 1000 search results, directory-tree depth clamped to 8 and capped at 5000 visited nodes. Responses that hit a cap are flagged with `"truncated": true`. The unauthenticated agent endpoints are additionally rate-limited per client (default 20 calls / 60 s) so an open endpoint cannot drain the deployment's LLM quota.
+The agent's tool calls are shaped by task text and by file contents it reads, so every tool that could be driven into unbounded work has an explicit ceiling (`app/tools/limits.py`): 1 MiB per file read or write, 1000 search results, directory-tree depth clamped to 8 and capped at 5000 visited nodes. A file read or write over the size limit is rejected outright; `get_directory_tree` and `search_files` return partial results flagged with `"truncated": true`. The unauthenticated agent endpoints are additionally rate-limited per client (default 20 calls / 60 s) so an open endpoint cannot drain the deployment's LLM quota.
 
 ## Setup
 
@@ -136,7 +136,7 @@ pytest -v
 | DELETE | `/api/agent/sessions/{session_id}` | Delete a session |
 | GET | `/api/sandbox/tree` | Get the requesting client's sandbox directory tree |
 
-All endpoints require an `X-Client-Id` header, used to scope sandbox and session data to the requesting browser. It is validated to a safe path-segment shape before use; a malformed value returns `400`. The agent endpoints also return `429` (with `Retry-After`) when a client exceeds its rate-limit budget.
+All endpoints require an `X-Client-Id` header, used to scope sandbox and session data to the requesting browser. On the endpoints that open the client's sandbox directory (`/api/agent/task`, `/api/agent/task/{session_id}/confirm`, `/api/sandbox/tree`) the header is validated to a safe path-segment shape and a malformed value returns `400`; the session list, session detail, and delete endpoints use it only as an opaque lookup key and return an empty result or `404` rather than `400`. The agent endpoints also return `429` (with `Retry-After`) when a client exceeds its rate-limit budget.
 
 ## Known limitations
 

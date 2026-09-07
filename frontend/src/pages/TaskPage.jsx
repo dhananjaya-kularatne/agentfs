@@ -15,6 +15,16 @@ const EXAMPLE_PROMPTS = [
   { label: "🗑️ Delete", text: "Delete the reports folder" },
 ]
 
+// Turn a failed request into a short message for the error banner. A 429 from
+// the rate limiter carries a Retry-After hint; anything else stays generic.
+function describeError(err) {
+  if (err?.status === 429) {
+    const wait = err.retryAfter ? ` Try again in ${err.retryAfter}s.` : " Try again shortly."
+    return `Rate limit reached — too many agent requests.${wait}`
+  }
+  return err?.message || "Something went wrong. Please try again."
+}
+
 function TaskPage() {
   const clientId = useClientId()
   const [goal, setGoal] = useState("")
@@ -24,6 +34,7 @@ function TaskPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [tree, setTree] = useState(null)
   const [sessions, setSessions] = useState([])
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!clientId) return
@@ -57,6 +68,7 @@ function TaskPage() {
     setIsRunning(true)
     setSteps([])
     setStatus(null)
+    setError(null)
     try {
       const result = await runTask(goal, clientId)
       setSessionId(result.session_id)
@@ -68,6 +80,7 @@ function TaskPage() {
       }
     } catch (err) {
       setStatus("failed")
+      setError(describeError(err))
     } finally {
       setIsRunning(false)
     }
@@ -77,6 +90,7 @@ function TaskPage() {
   async function handleConfirm(approved) {
     if (!sessionId || !clientId) return
     setIsRunning(true)
+    setError(null)
     try {
       const result = await confirmAction(sessionId, approved, clientId)
       setSteps(result.steps)
@@ -87,6 +101,7 @@ function TaskPage() {
       }
     } catch (err) {
       setStatus("failed")
+      setError(describeError(err))
     } finally {
       setIsRunning(false)
     }
@@ -100,6 +115,7 @@ function TaskPage() {
       setSteps(session.steps)
       setStatus(session.status)
       setGoal(session.goal)
+      setError(null)
     } catch (err) {
       console.error("Failed to load session", err)
     }
@@ -177,6 +193,12 @@ function TaskPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-4 max-w-2xl rounded-lg border border-red-600/50 bg-red-950/30 text-red-200 text-sm px-4 py-3">
+              {error}
             </div>
           )}
 

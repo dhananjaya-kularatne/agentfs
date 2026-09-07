@@ -12,6 +12,10 @@ app.add_middleware(
     allow_origins=settings.allowed_origins_list,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-Client-Id"],
+    # Retry-After is not a CORS-safelisted response header, so the browser hides
+    # it from JS unless it is explicitly exposed. The frontend reads it to tell
+    # the user how long to wait after a 429.
+    expose_headers=["Retry-After"],
 )
 
 

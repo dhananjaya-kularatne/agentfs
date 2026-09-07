@@ -5,8 +5,8 @@ class Settings(BaseSettings):
     groq_api_key: str
     groq_model: str = "openai/gpt-oss-120b"
     mongodb_uri: str
-    mongodb_db_name: str
-    agent_working_directory: str
+    mongodb_db_name: str = "agentfs"
+    agent_working_directory: str = "./sandbox"
 
     # Comma-separated list of browser origins allowed to call this API.
     allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"

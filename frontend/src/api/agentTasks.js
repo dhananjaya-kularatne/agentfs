@@ -1,4 +1,6 @@
-const API_BASE_URL = "http://127.0.0.1:8000"
+// Backend origin. Set VITE_API_BASE_URL at build time for deployed environments;
+// falls back to the local dev server.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 
 // Build an Error from a failed response, keeping the HTTP status and — for a 429
 // from the rate limiter — the Retry-After hint so callers can tell the user how

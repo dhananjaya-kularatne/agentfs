@@ -114,7 +114,7 @@ npm install
 npm run dev
 ```
 
-The frontend runs at `http://localhost:5173` and expects the backend to be available at `http://127.0.0.1:8000`.
+The frontend runs at `http://localhost:5173` and talks to the backend at `http://127.0.0.1:8000` by default. To point it elsewhere, set `VITE_API_BASE_URL` (copy `frontend/.env.example` to `frontend/.env.local`). The value is read at build time.
 
 ### Tests
 
@@ -124,6 +124,10 @@ pytest -v
 ```
 
 63 tests cover path validation (traversal, absolute paths, null bytes, encoded sequences), client-ID validation (traversal, absolute, empty), resource limits, the rate limiter, error-message disclosure, and all read-only and destructive tools, using an isolated temporary directory per test so no test run touches the real sandbox.
+
+## Deployment
+
+The repo carries a backend `Dockerfile` and `railway.toml`, a `frontend/vercel.json`, and env-var wiring for a three-part deploy: MongoDB Atlas (M0), the backend on Railway, and the static frontend on Vercel. Step-by-step instructions — including the CORS and `VITE_API_BASE_URL` hookup and the single-instance / ephemeral-sandbox caveats — are in [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ## API reference
 

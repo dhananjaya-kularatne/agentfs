@@ -1,0 +1,11 @@
+# Railway reads this from the service's root directory (set Root Directory to
+# "backend" when creating the service).
+
+[build]
+builder = "dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
